@@ -10,5 +10,7 @@ Written in p5.js.
 Click in the space to generate a randomly moving ball that will bounce off the lines and the sides of the screen. When the ball bounces on a line, its position on the line will correspond to a note.
 
 ### Features to come
-* A way to move and add/remove the lines
-* A way to remove each ball so things don't get too crowded
+* Move and add/remove lines
+* Parameters for gravity, inertia etc.
+* Control over ball's initial speed (ie. pull back and release to launch)
+* Remove each ball so things don't get too crowded
