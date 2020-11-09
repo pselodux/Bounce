@@ -1,12 +1,66 @@
 let balls = [];
-
 let lines = [];
-
 let ballSize = 15;
-
 let lineWidth = 10;
+let timerAmount = 0.25;
+let inertia = .95; // make this less than 1 for a ball that gradually slows down
+let gravity = 0.1;
+let lineWasHit = false;
 
-let timerAmount = 0.3;
+let bkCol = '#bbbb77';
+let lineCol = '#eecc88';
+let ballCol = '#ffeebb';
+
+// set up sound
+let notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "C"];
+let scales = [[0,2,3,5,7,8,10,12],
+              [0,2,4,5,7,9,11,12]];
+let octaveSpan = 4;
+let transpose = 0;
+let minMaj = 0;
+let scale = [];
+let noteLength = 2;
+
+// remember to generate reverb! (it's in setup)
+const reverb = new Tone.Reverb({wet:0.5,decay:26,preDelay:0.01}).toMaster();
+const synth = new Tone.PolySynth({polyphony:4,volume:-12,voice:Tone.MonoSynth}).connect(reverb);
+
+
+function CreateScales(){
+  for(let j=0; j<octaveSpan; j++){
+    var octave = j + 3;
+    for(let i=0; i<8; i++){
+      scale[i+(j*scales[minMaj].length)] = notes[scales[minMaj][i%scales[minMaj].length] % notes.length] + (octave+Math.floor(i/7)).toString();
+    }
+  }
+}
+
+function playSound(noteNum){
+
+  synth.set({
+    "oscillator":{
+      "type":"fmtriangle"
+    },
+    "envelope":{
+      "attack":0.02,
+      "release":8,
+    },
+    "filter":{
+      "Q":0,
+      "type": "lowpass",
+      "rolloff":-12
+    },
+    "filterEnvelope":{
+      "attack":0.001,
+      "decay":0.15,
+      "release":3,
+      "baseFrequency":100,
+      "octaves":4
+    }
+
+  });
+  synth.triggerAttackRelease(scale[noteNum%scale.length], "32n");
+}
 
 class bounceLine{
   constructor (lp1, lp2){
@@ -14,19 +68,19 @@ class bounceLine{
     this.p2 = lp2;
   }
 
-  display(){
-    stroke('black');
+  display(col){
+    stroke(col);
     strokeWeight(lineWidth);
-    strokeCap(SQUARE);
+    strokeCap(ROUND);
     line(this.p1.x, this.p1.y, this.p2.x, this.p2.y);
-    
+
     this.lineDelta = p5.Vector.sub(this.p2, this.p1);
     this.lineDelta.normalize();
     this.normal = createVector(-this.lineDelta.y, this.lineDelta.x);
     this.intercept = p5.Vector.dot(this.p1, this.normal);
-    
+
   }
-  
+
 }
 
 
@@ -35,22 +89,26 @@ class ball {
     this.p1 = bp1;
     this.speed = 1;
     this.ballVel = p5.Vector.random2D();
+    // this.ballVel = createVector(0,1,0);
     this.hasBounced = false;
     this.timer = timerAmount;
   }
 
   move() {
-    // this.p1.y += this.speed;
-    // this.speed += 0.1;
 
     this.p1.add(this.ballVel);
+    this.ballVel.add(0,gravity,0);
 
-    this.incidence = p5.Vector.mult(this.ballVel, -1);
-    this.incidence.normalize();
+    this.incidence = p5.Vector.mult(this.ballVel, inertia * -1);
+    // this.incidence.normalize();
 
     //detect lines
     for(let i = 0; i<lines.length; i++){
-      if (this.p1.dist(lines[i].p1) + this.p1.dist(lines[i].p2) <= lines[i].p1.dist(lines[i].p2) + 0.25 && !this.hasBounced) {
+      if (this.p1.dist(lines[i].p1) + this.p1.dist(lines[i].p2) <= lines[i].p1.dist(lines[i].p2) + 0.35 && !this.hasBounced) {
+        this.linePos = this.p1.dist(lines[i].p2);
+        this.maxPos = lines[i].p1.dist(lines[i].p2);
+        this.note = floor(map(this.linePos, 0, this.maxPos, 0, scale.length));
+        playSound(this.note);
         this.hasBounced = true;
         // calculate dot product of incident vector and line
         let dot = this.incidence.dot(lines[i].normal);
@@ -62,9 +120,9 @@ class ball {
           2 * lines[i].normal.y * dot - this.incidence.y,
           0
         );
-        // this.ballVel.mult(this.speed);
 
       }
+      // run a timer before bounce can happen again
       if(this.hasBounced){
         this.timer -= 0.01;
         if (this.timer <= 0){
@@ -78,28 +136,30 @@ class ball {
     // detect edges of screen (do I want this?)
     if (this.p1.x > windowWidth) {
       this.p1.x = windowWidth;
-      this.ballVel.x *= -1;
+      this.ballVel.x *= inertia * -1;
     }
 
     if (this.p1.x < 0) {
       this.p1.x = 0;
-      this.ballVel.x *= -1;
+      this.ballVel.x *= inertia * -1;
     }
 
     if (this.p1.y > windowHeight) {
       this.p1.y = windowHeight;
-      this.ballVel.y *= -1;
+      this.ballVel.y *= inertia * -1;
+      this.ballVel.x *= inertia;
     }
 
     if (this.p1.y < 0) {
       this.p1.y = 0;
-      this.ballVel.y *= -1;
+      this.ballVel.y *= inertia * -1;
+      this.ballVel.x *= inertia;
     }
 
   }
 
-  display() {
-    stroke('black');
+  display(num) {
+    stroke(ballCol);
     strokeWeight(ballSize);
     strokeCap(ROUND);
     point(this.p1.x, this.p1.y);
@@ -112,30 +172,38 @@ function mouseClicked() {
   balls.push(gen);
 }
 
+function preload(){
+  reverb.generate();
+
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
-
-  // generate lines  
-  for(let i = 0; i<4; i++){
+  CreateScales();
+  // generate lines
+  for(let i = 0; i<6; i++){
     let l1 = createVector(random(windowWidth), random(windowHeight));
     let l2 = createVector(random(windowWidth), random(windowHeight));
     let newLine = new bounceLine(l1, l2);
     lines.push(newLine);
   }
+
 }
 
 function draw() {
-  background(220);
+  background(bkCol);
 
   // draw balls from ball class
   for (let i = 0; i < balls.length; i++) {
-    balls[i].display();
+    balls[i].display(i);
     balls[i].move();
   }
 
   // draw lines from line class
   for (let i = 0; i < lines.length; i++){
-    lines[i].display();
+    lines[i].display(lineCol);
   }
-  
+
+
+
 }
