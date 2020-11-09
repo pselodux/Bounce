@@ -1,5 +1,7 @@
 # Bounce
 
+Latest version available online [here](https://0f.digital/bounce/).
+
 **NOTE!** This is still a work-in-progress!
 
 ### Description
