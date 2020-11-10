@@ -16,9 +16,9 @@ let target;
 let firstMousePos;
 let stretchPos;
 
-let bkCol = '#bbbb77';
-let lineCol = '#eecc88';
-let ballCol = '#ffeebb';
+let bkCol;
+let lineCol;
+let ballCol;
 
 // set up sound
 let notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "C"];
@@ -31,6 +31,23 @@ let transpose = 0;
 let minMaj = 0;
 let scale = [];
 let noteLength = 2;
+
+function setup() {
+  bkCol = color('#bbbb77')
+  lineCol = color('#eecc88');
+  ballCol = color('#ffeebb');
+  createCanvas(windowWidth, windowHeight);
+  CreateScales();
+  // generate lines
+  for (let i = 0; i < 6; i++) {
+    let l1 = createVector(random(windowWidth), random(windowHeight));
+    let l2 = createVector(random(windowWidth), random(windowHeight));
+    let newLine = new bounceLine(l1, l2);
+    lines.push(newLine);
+  }
+
+}
+
 
 // remember to generate reverb! (it's in setup)
 const reverb = new Tone.Reverb({
@@ -85,10 +102,21 @@ class bounceLine {
   constructor(lp1, lp2) {
     this.p1 = lp1;
     this.p2 = lp2;
+    this.hit = false;
+    this.timer = 1.0;
   }
 
-  display(col) {
-    stroke(col);
+  display() {
+    if(this.hit && this.timer > 0){
+      stroke(lerpColor(lineCol, ballCol, this.timer));
+      this.timer -= 0.1;
+    } else if (this.hit && this.timer < 0) {
+      stroke(lineCol);
+      this.timer = 1.0;
+      this.hit = false;
+    } else {
+      stroke(lineCol);
+    }
     strokeWeight(lineWidth);
     strokeCap(ROUND);
     line(this.p1.x, this.p1.y, this.p2.x, this.p2.y);
@@ -97,8 +125,6 @@ class bounceLine {
     this.lineDelta.normalize();
     this.normal = createVector(-this.lineDelta.y, this.lineDelta.x);
     this.intercept = p5.Vector.dot(this.p1, this.normal);
-
-
 
     if (mouseOver(this.p1) && !preparingBall) {
       stroke('white');
@@ -169,6 +195,8 @@ class ball {
       if (this.p1.dist(lines[i].p1) + this.p1.dist(lines[i].p2) <= lines[i].p1.dist(lines[i].p2) + 0.35 && !this.hasBounced) {
         this.linePos = this.p1.dist(lines[i].p2);
         this.maxPos = lines[i].p1.dist(lines[i].p2);
+        lines[i].hit = true;
+        lines[i].timer = 1.0;
         this.note = floor(map(this.linePos, 0, this.maxPos, 0, scale.length));
         playSound(this.note);
         this.hasBounced = true;
@@ -262,18 +290,7 @@ function preload() {
   reverb.generate();
 }
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  CreateScales();
-  // generate lines
-  for (let i = 0; i < 6; i++) {
-    let l1 = createVector(random(windowWidth), random(windowHeight));
-    let l2 = createVector(random(windowWidth), random(windowHeight));
-    let newLine = new bounceLine(l1, l2);
-    lines.push(newLine);
-  }
 
-}
 
 function draw() {
   background(bkCol);
@@ -286,7 +303,7 @@ function draw() {
 
   // draw lines from line class
   for (let i = 0; i < lines.length; i++) {
-    lines[i].display(lineCol);
+    lines[i].display();
   }
 
   if (mouseIsPressed && !onLinePoint) {
