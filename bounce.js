@@ -250,7 +250,6 @@ function mousePressed() {
 
 function mouseReleased() {
   preparingBall = false;
-  print(preparingBall);
   if (!onLinePoint) {
     let stretchVector = stretchPos.sub(firstMousePos);
     let index = balls.length;
