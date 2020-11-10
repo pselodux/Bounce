@@ -6,6 +6,11 @@ let timerAmount = 0.25;
 let inertia = 0.95; // make this less than 1 for a ball that gradually slows down
 let gravity = 0.1;
 let lineWasHit = false;
+let onLinePoint = true;
+let dragTimer;
+let dragTimerAmount = 0.5;
+let pointNum;
+let target;
 
 let firstMousePos;
 let stretchPos;
@@ -92,6 +97,48 @@ class bounceLine {
     this.normal = createVector(-this.lineDelta.y, this.lineDelta.x);
     this.intercept = p5.Vector.dot(this.p1, this.normal);
 
+
+
+    if (mouseOver(this.p1)) {
+      stroke('white');
+      strokeWeight(ballSize);
+      point(this.p1.x, this.p1.y);
+      onLinePoint = true;
+      pointNum = 1;
+      target = this;
+    }
+    else if (mouseOver(this.p2)) {
+      stroke('white');
+      strokeWeight(ballSize);
+      point(this.p2.x, this.p2.y);
+      onLinePoint = true;
+      pointNum = 2;
+      target = this;
+    }
+    else if (!mouseIsPressed){
+      onLinePoint = false;
+      pointNum = 0;
+    }
+
+    if(pointNum == 1 && mouseIsPressed){
+      target.p1.x = mouseX;
+      target.p1.y = mouseY;
+    } else if (pointNum == 2 && mouseIsPressed){
+      target.p2.x = mouseX;
+      target.p2.y = mouseY;
+    }
+
+  }
+
+}
+
+function mouseOver(point){
+  if (mouseX >= point.x - ballSize / 2 && mouseX <= point.x + ballSize / 2 &&
+      mouseY >= point.y - ballSize / 2 && mouseY <= point.y + ballSize / 2){
+    return true;
+  }
+  else {
+    return false;
   }
 
 }
@@ -177,7 +224,7 @@ class ball {
     strokeWeight(ballSize);
     strokeCap(ROUND);
     point(this.p1.x, this.p1.y);
-    
+
     // debug text for ball vector
     // noStroke();
     // fill('black');
@@ -186,14 +233,17 @@ class ball {
 }
 
 function mousePressed() {
-  firstMousePos = createVector(mouseX, mouseY);
+  if (!onLinePoint) {
+    firstMousePos = createVector(mouseX, mouseY);
+  }
 }
 
 function mouseReleased() {
-  // let mp = createVector(mouseX, mouseY);
-  let stretchVector = stretchPos.sub(firstMousePos);
-  let gen = new ball(firstMousePos, stretchVector);
-  balls.push(gen);
+  if (!onLinePoint) {
+    let stretchVector = stretchPos.sub(firstMousePos);
+    let gen = new ball(firstMousePos, stretchVector);
+    balls.push(gen);
+  }
 }
 
 function preload() {
@@ -227,7 +277,7 @@ function draw() {
     lines[i].display(lineCol);
   }
 
-  if (mouseIsPressed) {
+  if (mouseIsPressed && !onLinePoint) {
     stroke(ballCol);
     strokeWeight(ballSize);
     strokeCap(ROUND);
