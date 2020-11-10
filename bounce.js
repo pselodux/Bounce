@@ -7,6 +7,7 @@ let inertia = 0.95; // make this less than 1 for a ball that gradually slows dow
 let gravity = 0.1;
 let lineWasHit = false;
 let onLinePoint = true;
+let preparingBall = false;
 let dragTimer;
 let dragTimerAmount = 0.5;
 let pointNum;
@@ -99,7 +100,7 @@ class bounceLine {
 
 
 
-    if (mouseOver(this.p1)) {
+    if (mouseOver(this.p1) && !preparingBall) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p1.x, this.p1.y);
@@ -107,7 +108,7 @@ class bounceLine {
       pointNum = 1;
       target = this;
     }
-    else if (mouseOver(this.p2)) {
+    else if (mouseOver(this.p2) && !preparingBall) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p2.x, this.p2.y);
@@ -120,10 +121,10 @@ class bounceLine {
       pointNum = 0;
     }
 
-    if(pointNum == 1 && mouseIsPressed){
+    if(pointNum == 1 && mouseIsPressed && !preparingBall){
       target.p1.x = mouseX;
       target.p1.y = mouseY;
-    } else if (pointNum == 2 && mouseIsPressed){
+    } else if (pointNum == 2 && mouseIsPressed && !preparingBall){
       target.p2.x = mouseX;
       target.p2.y = mouseY;
     }
@@ -145,14 +146,14 @@ function mouseOver(point){
 
 
 class ball {
-  constructor(bp1, stretch) {
+  constructor(bp1, stretch, index) {
     this.p1 = bp1;
     this.speed = 1;
-    // this.ballVel = p5.Vector.random2D();
     this.ballVel = createVector(0, 0, 0);
     this.ballVel.sub(stretch.mult(0.1));
     this.hasBounced = false;
     this.timer = timerAmount;
+    this.index = index;
   }
 
   move() {
@@ -206,9 +207,18 @@ class ball {
     }
 
     if (this.p1.y > windowHeight) {
-      this.p1.y = windowHeight;
-      this.ballVel.y *= inertia * -1;
-      this.ballVel.x *= inertia;
+      // old code where it bounces off the bottom
+      // this.p1.y = windowHeight;
+      // this.ballVel.y *= inertia * -1;
+      // this.ballVel.x *= inertia;
+
+      // New code! Now it falls off the bottom and is removed.
+      let tempIndex = this.index;
+      balls.splice(this.index,1);
+      for(let i = balls.length-1; i >= tempIndex; i-- && balls){
+        balls[i].index--;
+      }
+
     }
 
     if (this.p1.y < 0) {
@@ -239,9 +249,12 @@ function mousePressed() {
 }
 
 function mouseReleased() {
+  preparingBall = false;
+  print(preparingBall);
   if (!onLinePoint) {
     let stretchVector = stretchPos.sub(firstMousePos);
-    let gen = new ball(firstMousePos, stretchVector);
+    let index = balls.length;
+    let gen = new ball(firstMousePos, stretchVector, index);
     balls.push(gen);
   }
 }
@@ -287,6 +300,7 @@ function draw() {
     strokeWeight(2);
     strokeCap(SQUARE);
     line(stretchPos.x, stretchPos.y, firstMousePos.x, firstMousePos.y);
+    preparingBall = true;
   }
 
 }
