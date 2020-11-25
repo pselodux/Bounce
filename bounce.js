@@ -1,5 +1,6 @@
 let balls = [];
 let lines = [];
+let guns = [];
 let ballSize = 15;
 let lineWidth = 10;
 let timerAmount = 0.25;
@@ -8,10 +9,15 @@ let gravity = 0.1;
 let lineWasHit = false;
 let onLinePoint = true;
 let preparingBall = false;
+let adjustingGun = false;
+let adjustingStretch = false;
 let dragTimer;
 let dragTimerAmount = 0.5;
 let pointNum;
 let target;
+
+let maxBalls = 10;
+let ballFreq = 5;
 
 let firstMousePos;
 let stretchPos;
@@ -32,12 +38,22 @@ let minMaj = 0;
 let scale = [];
 let noteLength = 2;
 
+// ================================================
+
 function setup() {
   bkCol = color('#bbbb77')
   lineCol = color('#eecc88');
   ballCol = color('#ffeebb');
   createCanvas(windowWidth, windowHeight);
   CreateScales();
+
+  // generate ball firing gun
+  let gunPos = createVector(windowWidth * 0.25, windowHeight * 0.5);
+  let gunStretch = createVector(windowWidth * 0.25 - 20, windowHeight * 0.5 - 30);
+  let gunFreq = 2;
+  let gun = new ballGun(gunPos, gunStretch, gunFreq);
+  guns.push(gun);
+
   // generate lines
   for (let i = 0; i < 6; i++) {
     let l1 = createVector(random(windowWidth), random(windowHeight));
@@ -98,6 +114,10 @@ function playSound(noteNum) {
   synth.triggerAttackRelease(scale[noteNum % scale.length], "32n");
 }
 
+// ================================================
+
+// ===== BOUNCY LINES =====
+
 class bounceLine {
   constructor(lp1, lp2) {
     this.p1 = lp1;
@@ -107,7 +127,7 @@ class bounceLine {
   }
 
   display() {
-    if(this.hit && this.timer > 0){
+    if (this.hit && this.timer > 0){
       stroke(lerpColor(lineCol, ballCol, this.timer));
       this.timer -= 0.1;
     } else if (this.hit && this.timer < 0) {
@@ -126,7 +146,7 @@ class bounceLine {
     this.normal = createVector(-this.lineDelta.y, this.lineDelta.x);
     this.intercept = p5.Vector.dot(this.p1, this.normal);
 
-    if (mouseOver(this.p1) && !preparingBall) {
+    if (mouseOver(this.p1) && !preparingBall && !adjustingGun && !adjustingStretch) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p1.x, this.p1.y);
@@ -134,7 +154,7 @@ class bounceLine {
       pointNum = 1;
       target = this;
     }
-    else if (mouseOver(this.p2) && !preparingBall) {
+    else if (mouseOver(this.p2) && !preparingBall && !adjustingGun && !adjustingStretch) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p2.x, this.p2.y);
@@ -159,17 +179,7 @@ class bounceLine {
 
 }
 
-function mouseOver(point){
-  if (mouseX >= point.x - ballSize / 2 && mouseX <= point.x + ballSize / 2 &&
-      mouseY >= point.y - ballSize / 2 && mouseY <= point.y + ballSize / 2){
-    return true;
-  }
-  else {
-    return false;
-  }
-
-}
-
+// ===== BALLZ =====
 
 class ball {
   constructor(bp1, stretch, index) {
@@ -249,12 +259,28 @@ class ball {
 
     }
 
+
+    if (balls.length > maxBalls){
+      balls.splice(balls[0],1);
+      for(let i = balls.length-1; i>= 0; i-- && balls){
+        balls[i].index--;
+      }
+    }
+
     if (this.p1.y < 0) {
       this.p1.y = 0;
       this.ballVel.y *= inertia * -1;
       this.ballVel.x *= inertia;
     }
 
+  }
+
+  removeBall(){
+    let tempIndex = this.index;
+    balls.splice(this.index,1);
+    for(let i = balls.length-1; i >=tempIndex; i-- && balls){
+      balls[i].index--;
+    }
   }
 
   display(num) {
@@ -270,6 +296,102 @@ class ball {
   }
 }
 
+// ===== BALL SHOOTER =====
+
+class ballGun {
+  constructor(point, stretch, frequency) {
+    this.point = point;
+    this.stretch = stretch;
+    this.frequency = frequency;
+    this.timer = frequency;
+  }
+
+  display() {
+
+    // draw line between two points
+    stroke(ballCol);
+    strokeWeight(2);
+    line(this.point.x, this.point.y, this.stretch.x, this.stretch.y);
+
+    // draw ball source
+    stroke(ballCol);
+    strokeWeight(2);
+    ellipseMode(CENTER);
+    fill(bkCol);
+    ellipse(this.point.x, this.point.y, ballSize);
+    strokeWeight((this.timer/this.frequency * -1 + 1) * ballSize);
+    strokeCap(ROUND);
+    point(this.point);
+
+    // draw "stretch" point
+    stroke("white");
+    strokeWeight (ballSize / 2);
+    point(this.stretch);
+
+
+    if(mouseOver(this.point) && !preparingBall && !adjustingStretch){
+      adjustingGun = true;
+      stroke('white');
+      strokeWeight(ballSize);
+      point(this.point.x, this.point.y);
+    }
+
+    if (!mouseIsPressed){
+      adjustingGun = false;
+      adjustingStretch = false;
+    }
+
+    if(mouseOver(this.stretch) && !preparingBall){
+      adjustingStretch = true;
+      stroke('white');
+      strokeWeight(ballSize);
+      point(this.stretch);
+    }
+
+    if(mouseIsPressed && !preparingBall && adjustingGun){
+      this.dist = p5.Vector.sub(this.point, this.stretch);
+      this.point.x = mouseX;
+      this.point.y = mouseY;
+      this.stretch = p5.Vector.sub(this.point, this.dist);
+    }
+
+    if(mouseIsPressed && !preparingBall && adjustingStretch){
+      this.stretch.x = mouseX;
+      this.stretch.y = mouseY;
+    }
+
+    this.timer -= 0.01;
+    if (this.timer <= 0){
+      this.shoot();
+      this.timer = this.frequency;
+    }
+  }
+
+  shoot() {
+      let stretchVector = p5.Vector.sub(this.stretch, this.point);
+      let ballPoint = createVector(this.point.x, this.point.y);
+      let index = balls.length;
+      let gen = new ball(ballPoint, stretchVector, index);
+      balls.push(gen);
+  }
+
+}
+
+
+// ================================================
+
+
+function mouseOver(point){
+  if (mouseX >= point.x - ballSize / 2 && mouseX <= point.x + ballSize / 2 &&
+      mouseY >= point.y - ballSize / 2 && mouseY <= point.y + ballSize / 2){
+    return true;
+  }
+  else {
+    return false;
+  }
+
+}
+
 function mousePressed() {
   if (!onLinePoint) {
     firstMousePos = createVector(mouseX, mouseY);
@@ -278,7 +400,7 @@ function mousePressed() {
 
 function mouseReleased() {
   preparingBall = false;
-  if (!onLinePoint) {
+  if (!onLinePoint && !adjustingGun && !adjustingStretch) {
     let stretchVector = stretchPos.sub(firstMousePos);
     let index = balls.length;
     let gen = new ball(firstMousePos, stretchVector, index);
@@ -290,7 +412,7 @@ function preload() {
   reverb.generate();
 }
 
-
+// ================================================
 
 function draw() {
   background(bkCol);
@@ -306,7 +428,11 @@ function draw() {
     lines[i].display();
   }
 
-  if (mouseIsPressed && !onLinePoint) {
+  for (let i = 0; i < guns.length; i++) {
+    guns[i].display();
+  }
+
+  if (mouseIsPressed && !onLinePoint && !adjustingGun && !adjustingStretch) {
     stroke(ballCol);
     strokeWeight(ballSize);
     strokeCap(ROUND);
