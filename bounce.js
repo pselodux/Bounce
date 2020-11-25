@@ -1,6 +1,7 @@
 let balls = [];
 let lines = [];
 let guns = [];
+let buttons = [];
 let ballSize = 15;
 let lineWidth = 10;
 let timerAmount = 0.25;
@@ -8,6 +9,8 @@ let inertia = 0.95; // make this less than 1 for a ball that gradually slows dow
 let gravity = 0.1;
 let lineWasHit = false;
 let onLinePoint = true;
+let onMenu = false;
+let menuButtonDown = false;
 let preparingBall = false;
 let adjustingGun = false;
 let adjustingStretch = false;
@@ -16,14 +19,23 @@ let dragTimerAmount = 0.5;
 let pointNum;
 let target;
 
-let maxBalls = 10;
+let maxBalls = 5;
 let ballFreq = 5;
+
+let autoBall = false;
 
 let firstMousePos;
 let stretchPos;
 
 let bkCol;
 let lineCol;
+let buttonOnCol;
+let buttonOnClickedCol;
+let buttonActiveCol;
+let buttonOnActiveCol;
+let buttonOnActiveClickedCol;
+let buttonTextCol;
+let txtSize = 20;
 let ballCol;
 
 // set up sound
@@ -43,24 +55,37 @@ let noteLength = 2;
 function setup() {
   bkCol = color('#bbbb77')
   lineCol = color('#eecc88');
+  buttonOnCol = color('#d9b570');
+  buttonOnClickedCol = color ('#c49e57');
+  buttonActiveCol = color ('#af863f');
+  buttonOnActiveCol = color ('#9a6f26');
+  buttonOnActiveClickedCol = color ('#85580e');
+  buttonTextCol = color('#805507')
   ballCol = color('#ffeebb');
   createCanvas(windowWidth, windowHeight);
   CreateScales();
 
   // generate ball firing gun
   let gunPos = createVector(windowWidth * 0.25, windowHeight * 0.5);
-  let gunStretch = createVector(windowWidth * 0.25 - 20, windowHeight * 0.5 - 30);
+  let gunStretch = createVector(windowWidth * 0.25 - 20, windowHeight * 0.5 + 30);
   let gunFreq = 2;
   let gun = new ballGun(gunPos, gunStretch, gunFreq);
   guns.push(gun);
 
   // generate lines
   for (let i = 0; i < 6; i++) {
-    let l1 = createVector(random(windowWidth), random(windowHeight));
-    let l2 = createVector(random(windowWidth), random(windowHeight));
+    let l1 = createVector(random(windowWidth), random(windowHeight-80-lineWidth));
+    let l2 = createVector(random(windowWidth), random(windowHeight-80-lineWidth));
     let newLine = new bounceLine(l1, l2);
     lines.push(newLine);
   }
+
+  let autoButton = new button(windowWidth*0.5-20,windowHeight-60,40,false,"ø");
+  let addBall = new button(windowWidth * 0.25-10, windowHeight - 60,20,null,"+");
+  let delBall = new button(windowWidth * 0.25-10, windowHeight - 40,20,null,"-");
+  let increaseFreq = new button (windowWidth * 0.75-10, windowHeight - 60, 20, null, "+");
+  let decreaseFreq = new button (windowWidth * 0.75-10, windowHeight - 40, 20, null, "-");
+  buttons.push(autoButton, addBall, delBall, increaseFreq, decreaseFreq);
 
 }
 
@@ -116,6 +141,65 @@ function playSound(noteNum) {
 
 // ================================================
 
+// ===== BUTTONS =====
+
+class button {
+  constructor(x, y, size, active, text) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.text = text;
+    this.active = active;
+    this.oneshot = false;
+  }
+
+  display() {
+    this.mouseOver = mouseX >= this.x &&
+                     mouseX <= this.x+this.size &&
+                     mouseY >= this.y &&
+                     mouseY <= this.y+this.size
+
+    noStroke();
+    if(this.mouseOver){
+      fill(buttonOnCol);
+    } else {
+      fill(lineCol);
+    }
+    if(this.mouseOver && mouseIsPressed){
+      fill(buttonOnClickedCol);
+    }
+    if (this.active){
+      fill(buttonActiveCol);
+    }
+    if (this.mouseOver && !mouseIsPressed && this.active){
+      fill(buttonOnActiveCol);
+    }
+    if (this.active && mouseIsPressed && this.mouseOver){
+      fill(buttonOnActiveClickedCol);
+    }
+    rectMode(CORNER);
+    rect(this.x, this.y, this.size);
+
+    if(this.mouseOver && mouseIsPressed && !menuButtonDown) {
+      menuButtonDown = true;
+    }
+    if(this.mouseOver && !mouseIsPressed && menuButtonDown){
+      if(typeof this.active == "boolean"){
+        // make it a toggle switch if bool
+        this.active = !this.active;
+      }
+      if(typeof this.active == "object"){
+        this.oneshot = true;
+      }
+      menuButtonDown = false;
+    }
+    textSize(this.size);
+    fill(buttonTextCol);
+    textAlign(CENTER);
+    text(this.text, this.x+this.size/2, this.y+this.size*.77);
+  }
+}
+
 // ===== BOUNCY LINES =====
 
 class bounceLine {
@@ -146,7 +230,7 @@ class bounceLine {
     this.normal = createVector(-this.lineDelta.y, this.lineDelta.x);
     this.intercept = p5.Vector.dot(this.p1, this.normal);
 
-    if (mouseOver(this.p1) && !preparingBall && !adjustingGun && !adjustingStretch) {
+    if (mouseOver(this.p1) && !preparingBall && !adjustingGun && !adjustingStretch && !onMenu) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p1.x, this.p1.y);
@@ -154,7 +238,7 @@ class bounceLine {
       pointNum = 1;
       target = this;
     }
-    else if (mouseOver(this.p2) && !preparingBall && !adjustingGun && !adjustingStretch) {
+    else if (mouseOver(this.p2) && !preparingBall && !adjustingGun && !adjustingStretch && !onMenu) {
       stroke('white');
       strokeWeight(ballSize);
       point(this.p2.x, this.p2.y);
@@ -167,12 +251,18 @@ class bounceLine {
       pointNum = 0;
     }
 
-    if(pointNum == 1 && mouseIsPressed && !preparingBall){
+    if(pointNum == 1 && mouseIsPressed && !preparingBall && !onMenu){
       target.p1.x = mouseX;
       target.p1.y = mouseY;
-    } else if (pointNum == 2 && mouseIsPressed && !preparingBall){
+      if (target.p1.y >= windowHeight - 80 - ballSize/2){
+        target.p1.y = windowHeight - 80 - ballSize/2;
+      }
+    } else if (pointNum == 2 && mouseIsPressed && !preparingBall && !onMenu){
       target.p2.x = mouseX;
       target.p2.y = mouseY;
+      if (target.p2.y >= windowHeight - 80 - ballSize/2){
+        target.p2.y = windowHeight - 80 - ballSize/2;
+      }
     }
 
   }
@@ -244,7 +334,7 @@ class ball {
       this.ballVel.x *= inertia * -1;
     }
 
-    if (this.p1.y > windowHeight) {
+    if (this.p1.y > windowHeight-80 + ballSize/2) {
       // old code where it bounces off the bottom
       // this.p1.y = windowHeight;
       // this.ballVel.y *= inertia * -1;
@@ -315,13 +405,17 @@ class ballGun {
 
     // draw ball source
     stroke(ballCol);
-    strokeWeight(2);
-    ellipseMode(CENTER);
-    fill(bkCol);
-    ellipse(this.point.x, this.point.y, ballSize);
-    strokeWeight((this.timer/this.frequency * -1 + 1) * ballSize);
-    strokeCap(ROUND);
+    strokeWeight(ballSize + 4);
     point(this.point);
+    stroke(bkCol);
+    strokeWeight(ballSize);
+    point(this.point);
+    if(buttons[0].active){
+      stroke(ballCol);
+      strokeWeight((this.timer/ballFreq * -1 + 1) * ballSize);
+      strokeCap(ROUND);
+      point(this.point);
+    }
 
     // draw "stretch" point
     stroke("white");
@@ -329,7 +423,7 @@ class ballGun {
     point(this.stretch);
 
 
-    if(mouseOver(this.point) && !preparingBall && !adjustingStretch){
+    if(mouseOver(this.point) && !preparingBall && !adjustingStretch && !onMenu){
       adjustingGun = true;
       stroke('white');
       strokeWeight(ballSize);
@@ -341,30 +435,39 @@ class ballGun {
       adjustingStretch = false;
     }
 
-    if(mouseOver(this.stretch) && !preparingBall){
+    if(mouseOver(this.stretch) && !preparingBall && !onMenu){
       adjustingStretch = true;
       stroke('white');
       strokeWeight(ballSize);
       point(this.stretch);
     }
 
-    if(mouseIsPressed && !preparingBall && adjustingGun){
+    if(mouseIsPressed && !preparingBall && adjustingGun && !onMenu){
       this.dist = p5.Vector.sub(this.point, this.stretch);
       this.point.x = mouseX;
       this.point.y = mouseY;
+      if(this.point.y >= windowHeight-80-ballSize/2){
+        this.point.y = windowHeight-80-ballSize/2;
+      }
       this.stretch = p5.Vector.sub(this.point, this.dist);
     }
 
-    if(mouseIsPressed && !preparingBall && adjustingStretch){
+    if(mouseIsPressed && !preparingBall && adjustingStretch && !onMenu){
       this.stretch.x = mouseX;
       this.stretch.y = mouseY;
     }
 
-    this.timer -= 0.01;
-    if (this.timer <= 0){
-      this.shoot();
-      this.timer = this.frequency;
+    // buttons[0] = auto shoot button
+    if(buttons[0].active){
+      this.timer -= 0.05;
+      if (this.timer <= 0){
+        this.shoot();
+        this.timer = ballFreq;
+      }
+    } else {
+        this.timer = ballFreq;
     }
+
   }
 
   shoot() {
@@ -393,14 +496,14 @@ function mouseOver(point){
 }
 
 function mousePressed() {
-  if (!onLinePoint) {
+  if (!onLinePoint && !buttons[0].active) {
     firstMousePos = createVector(mouseX, mouseY);
   }
 }
 
 function mouseReleased() {
   preparingBall = false;
-  if (!onLinePoint && !adjustingGun && !adjustingStretch) {
+  if (!onLinePoint && !adjustingGun && !adjustingStretch && !onMenu && !buttons[0].active) {
     let stretchVector = stretchPos.sub(firstMousePos);
     let index = balls.length;
     let gen = new ball(firstMousePos, stretchVector, index);
@@ -410,6 +513,60 @@ function mouseReleased() {
 
 function preload() {
   reverb.generate();
+}
+
+function drawMenu(){
+  noStroke();
+  fill(ballCol);
+  rectMode(CORNER);
+  rect(0, windowHeight - 80, windowWidth, 80);
+  // max number of balls
+  // auto launch on/off
+  // auto launch speed
+  if(mouseY>=windowHeight-80){
+    onMenu = true;
+  } else onMenu = false;
+
+  for(i=0; i<buttons.length; i++){
+    buttons[i].display();
+  }
+
+  // define add/rem button behaviours
+  if(buttons[1].oneshot){
+    buttons[1].oneshot = false;
+    if(maxBalls < 10){
+      maxBalls++;
+    }
+  }
+  if(buttons[2].oneshot){
+    buttons[2].oneshot = false;
+    if(maxBalls > 1){
+      maxBalls--;
+    }
+  }
+  if(buttons[3].oneshot){
+    buttons[3].oneshot = false;
+    if(ballFreq < 10){
+      ballFreq++;
+    }
+  }
+  if(buttons[4].oneshot){
+    buttons[4].oneshot = false;
+    if(ballFreq > 1){
+      ballFreq--;
+    }
+  }
+
+  fill(buttonOnActiveClickedCol);
+  textAlign(LEFT);
+  textSize(txtSize+10);
+  text("∴", windowWidth * 0.25 + 17, windowHeight - 55 + txtSize);
+  textSize(txtSize);
+  textAlign(RIGHT);
+  text(maxBalls, windowWidth * 0.25 - 20, windowHeight - 54 + txtSize);
+  text("∆", windowWidth * 0.75 - 20, windowHeight - 53 + txtSize);
+  textAlign(LEFT);
+  text(ballFreq, windowWidth * 0.75 + 20, windowHeight - 54 + txtSize);
 }
 
 // ================================================
@@ -432,7 +589,8 @@ function draw() {
     guns[i].display();
   }
 
-  if (mouseIsPressed && !onLinePoint && !adjustingGun && !adjustingStretch) {
+  // manual ball launching
+  if (mouseIsPressed && !onLinePoint && !adjustingGun && !adjustingStretch && !onMenu && !buttons[0].active) {
     stroke(ballCol);
     strokeWeight(ballSize);
     strokeCap(ROUND);
@@ -445,4 +603,20 @@ function draw() {
     preparingBall = true;
   }
 
+  drawMenu();
+
+}
+
+function windowResized() {
+  buttons[0].x = windowWidth*0.5-20;
+  buttons[0].y = windowHeight-60;
+  buttons[1].x = windowWidth * 0.25-10;
+  buttons[1].y = windowHeight - 60;
+  buttons[2].x = windowWidth * 0.25-10;
+  buttons[2].y = windowHeight - 40;
+  buttons[3].x = windowWidth * 0.75-10;
+  buttons[3].y = windowHeight - 60;
+  buttons[4].x = windowWidth * 0.75-10;
+  buttons[4].y = windowHeight - 40;
+  resizeCanvas (windowWidth, windowHeight);
 }
