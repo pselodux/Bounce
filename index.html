@@ -4,8 +4,13 @@
     <title>bounce</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.js"></script>
     <script src="https://0F.digital/window/libraries/Tone.js"></script>
+    <link href="favicon-b.png" rel="icon">
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta charset="utf-8" />
+    <meta property="og:site_name" content="BOUNCE"/>
+    <meta property="og:title" content="BOUNCE - Physics-based sequencer"/>
+    <meta property="og:description" content="Bounce balls off barriers in the field to create melodies."/>
+    <meta property="og:image" content="ogimage-b.png"/>
 
   </head>
   <body>
@@ -13,7 +18,7 @@
       var versionUpdate = (new Date()).getTime();
       var script = document.createElement("script");
       script.type = "text/javascript";
-      script.src = "bounce.js?v=" + versionUpdate;  
+      script.src = "bounce.js?v=" + versionUpdate;
       document.body.appendChild(script);
     </script>
   </body>

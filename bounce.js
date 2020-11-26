@@ -85,7 +85,8 @@ function setup() {
   let delBall = new button(windowWidth * 0.25-10, windowHeight - 40,20,null,"-");
   let increaseFreq = new button (windowWidth * 0.75-10, windowHeight - 60, 20, null, "+");
   let decreaseFreq = new button (windowWidth * 0.75-10, windowHeight - 40, 20, null, "-");
-  buttons.push(autoButton, addBall, delBall, increaseFreq, decreaseFreq);
+  let helpButton = new button (windowWidth * 0.95-20, windowHeight - 60, 40, false, "﹖")
+  buttons.push(autoButton, addBall, delBall, increaseFreq, decreaseFreq, helpButton);
 
 }
 
@@ -195,7 +196,7 @@ class button {
     }
     textSize(this.size);
     fill(buttonTextCol);
-    textAlign(CENTER);
+    textAlign(CENTER, BASELINE);
     text(this.text, this.x+this.size/2, this.y+this.size*.77);
   }
 }
@@ -558,15 +559,25 @@ function drawMenu(){
   }
 
   fill(buttonOnActiveClickedCol);
-  textAlign(LEFT);
+  textAlign(LEFT, BASELINE);
   textSize(txtSize+10);
   text("∴", windowWidth * 0.25 + 17, windowHeight - 55 + txtSize);
   textSize(txtSize);
-  textAlign(RIGHT);
+  textAlign(RIGHT, BASELINE);
   text(maxBalls, windowWidth * 0.25 - 20, windowHeight - 54 + txtSize);
   text("∆", windowWidth * 0.75 - 20, windowHeight - 53 + txtSize);
-  textAlign(LEFT);
+  textAlign(LEFT, BASELINE);
   text(ballFreq, windowWidth * 0.75 + 20, windowHeight - 54 + txtSize);
+}
+
+function drawHelp(){
+  fill(ballCol);
+  rectMode(CENTER);
+  rect(windowWidth/2, windowHeight/2-40, windowWidth * .75, windowHeight * .75);
+  fill(buttonOnActiveClickedCol);
+  textAlign(CENTER, CENTER);
+  textSize(min(windowWidth * .017, windowHeight * 0.03));
+  text("BOUNCE by Vague Robots\n\nsignal@0F.digital\n\nBounce balls on the barriers to play melodies.\n\nWhile the automatic ball launcher is disabled, you can click and drag anywhere\nin the field to throw a ball manually.\n\nClick and drag on the ends of each barrier in the field to move them around.\n\nThe ø button enables/disables the automatic ball launcher.\nThis will constantly launch a ball at the angle and strength shown on the launcher itself.\nYou can drag the handle at the back of the launcher to change the angle/strength,\nand drag the front of it to move the whole launcher around.\n\nThe left +/- buttons set the maximum number of balls on screen at any time.\n\nThe right +/- buttons set the time between launches, if the automatic launcher is enabled.", windowWidth/2, windowHeight/2-40);
 }
 
 // ================================================
@@ -605,6 +616,10 @@ function draw() {
 
   drawMenu();
 
+  if (buttons[5].active){
+    drawHelp();
+  }
+
 }
 
 function windowResized() {
@@ -618,5 +633,7 @@ function windowResized() {
   buttons[3].y = windowHeight - 60;
   buttons[4].x = windowWidth * 0.75-10;
   buttons[4].y = windowHeight - 40;
+  buttons[5].x = windowWidth * 0.95-20;
+  buttons[5].y = windowHeight - 60;
   resizeCanvas (windowWidth, windowHeight);
 }
