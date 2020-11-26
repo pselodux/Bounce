@@ -35,6 +35,26 @@ let buttonActiveCol;
 let buttonOnActiveCol;
 let buttonOnActiveClickedCol;
 let buttonTextCol;
+let addButton;
+let addOnButton;
+let addOnClickedButton;
+let infoButton;
+let infoOnButton;
+let infoOnClickedButton;
+let infoActiveButton;
+let infoActiveOnButton;
+let infoActiveOnClickedButton;
+let playButton;
+let playOnButton;
+let playOnClickedButton;
+let playActiveButton;
+let playActiveOnButton;
+let playActiveOnClickedButton;
+let subButton;
+let subOnButton;
+let subOnClickedButton;
+let deltaText;
+let numText;
 let txtSize = 20;
 let ballCol;
 
@@ -51,6 +71,30 @@ let scale = [];
 let noteLength = 2;
 
 // ================================================
+
+function preload() {
+  reverb.generate();
+  addButton = loadImage('images/add.png');
+  addOnButton = loadImage('images/add-on.png');
+  addOnClickedButton = loadImage('images/add-on-clicked.png');
+  infoButton = loadImage('images/info.png');
+  infoOnButton = loadImage('images/info-on.png');
+  infoOnClickedButton = loadImage('images/info-on-clicked.png');
+  infoActiveButton = loadImage('images/info-active.png');
+  infoActiveOnButton = loadImage('images/info-active-on.png');
+  infoActiveOnClickedButton = loadImage('images/info-active-on-clicked.png');
+  playButton = loadImage('images/play.png');
+  playOnButton = loadImage('images/play-on.png');
+  playOnClickedButton = loadImage('images/play-on-clicked.png');
+  playActiveButton = loadImage('images/play-active.png');
+  playActiveOnButton = loadImage('images/play-active-on.png');
+  playActiveOnClickedButton = loadImage('images/play-active-on-clicked.png');
+  subButton = loadImage('images/sub.png');
+  subOnButton = loadImage('images/sub-on.png');
+  subOnClickedButton = loadImage('images/sub-on-clicked.png');
+  deltaText = loadImage('images/delta.png');
+  numText = loadImage('images/num.png');
+}
 
 function setup() {
   bkCol = color('#bbbb77')
@@ -80,13 +124,13 @@ function setup() {
     lines.push(newLine);
   }
 
-  let autoButton = new button(windowWidth*0.5-20,windowHeight-60,40,false,"ø");
-  let addBall = new button(windowWidth * 0.25-10, windowHeight - 60,20,null,"+");
-  let delBall = new button(windowWidth * 0.25-10, windowHeight - 40,20,null,"-");
-  let increaseFreq = new button (windowWidth * 0.75-10, windowHeight - 60, 20, null, "+");
-  let decreaseFreq = new button (windowWidth * 0.75-10, windowHeight - 40, 20, null, "-");
-  let helpButton = new button (windowWidth * 0.95-20, windowHeight - 60, 40, false, "﹖")
-  buttons.push(autoButton, addBall, delBall, increaseFreq, decreaseFreq, helpButton);
+  let autoButton = new button(windowWidth*0.5-20,windowHeight-60,40,false,"play");
+  let addBall = new button(windowWidth * 0.25-10, windowHeight - 60,20,null,"add");
+  let delBall = new button(windowWidth * 0.25-10, windowHeight - 40,20,null,"sub");
+  let increaseFreq = new button (windowWidth * 0.75-10, windowHeight - 60, 20, null, "add");
+  let decreaseFreq = new button (windowWidth * 0.75-10, windowHeight - 40, 20, null, "sub");
+  let help = new button (windowWidth * 0.95-20, windowHeight - 60, 40, false, "info")
+  buttons.push(autoButton, addBall, delBall, increaseFreq, decreaseFreq, help);
 
 }
 
@@ -145,12 +189,12 @@ function playSound(noteNum) {
 // ===== BUTTONS =====
 
 class button {
-  constructor(x, y, size, active, text) {
+  constructor(x, y, size, active, image) {
     this.x = x;
     this.y = y;
     this.size = size;
-    this.text = text;
     this.active = active;
+    this.image = image;
     this.oneshot = false;
   }
 
@@ -161,25 +205,34 @@ class button {
                      mouseY <= this.y+this.size
 
     noStroke();
+    let img = eval(this.image + "Button");
+    // image(img, this.x, this.y,this.size,this.size);
+
     if(this.mouseOver){
-      fill(buttonOnCol);
+      let img = eval(this.image + "OnButton");
+      image(img, this.x, this.y,this.size,this.size);
     } else {
-      fill(lineCol);
+      let img = eval(this.image + "Button");
+      image(img, this.x, this.y,this.size,this.size);
     }
     if(this.mouseOver && mouseIsPressed){
-      fill(buttonOnClickedCol);
+      let img = eval(this.image + "OnClickedButton");
+      image(img, this.x, this.y,this.size,this.size);
     }
     if (this.active){
-      fill(buttonActiveCol);
+      let img = eval(this.image + "ActiveButton");
+      image(img, this.x, this.y,this.size,this.size);
     }
     if (this.mouseOver && !mouseIsPressed && this.active){
-      fill(buttonOnActiveCol);
+      let img = eval(this.image + "ActiveOnButton");
+      image(img, this.x, this.y,this.size,this.size);
     }
     if (this.active && mouseIsPressed && this.mouseOver){
-      fill(buttonOnActiveClickedCol);
+      let img = eval(this.image + "ActiveOnClickedButton");
+      image(img, this.x, this.y,this.size,this.size);
     }
-    rectMode(CORNER);
-    rect(this.x, this.y, this.size);
+    // rectMode(CORNER);
+    // rect(this.x, this.y, this.size);
 
     if(this.mouseOver && mouseIsPressed && !menuButtonDown) {
       menuButtonDown = true;
@@ -194,10 +247,12 @@ class button {
       }
       menuButtonDown = false;
     }
-    textSize(this.size);
-    fill(buttonTextCol);
-    textAlign(CENTER, BASELINE);
-    text(this.text, this.x+this.size/2, this.y+this.size*.77);
+
+
+    // textSize(this.size);
+    // fill(buttonTextCol);
+    // textAlign(CENTER, BASELINE);
+    // text(this.text, this.x+this.size/2, this.y+this.size*.77);
   }
 }
 
@@ -512,9 +567,7 @@ function mouseReleased() {
   }
 }
 
-function preload() {
-  reverb.generate();
-}
+
 
 function drawMenu(){
   noStroke();
@@ -559,13 +612,11 @@ function drawMenu(){
   }
 
   fill(buttonOnActiveClickedCol);
-  textAlign(LEFT, BASELINE);
-  textSize(txtSize+10);
-  text("∴", windowWidth * 0.25 + 17, windowHeight - 55 + txtSize);
+  image(numText, windowWidth * 0.25 - 50, windowHeight - 60, 40, 40);
   textSize(txtSize);
-  textAlign(RIGHT, BASELINE);
-  text(maxBalls, windowWidth * 0.25 - 20, windowHeight - 54 + txtSize);
-  text("∆", windowWidth * 0.75 - 20, windowHeight - 53 + txtSize);
+  textAlign(LEFT, BASELINE);
+  text(maxBalls, windowWidth * 0.25 + 20, windowHeight - 54 + txtSize);
+  image(deltaText, windowWidth * 0.75 - 50, windowHeight - 60, 40, 40);
   textAlign(LEFT, BASELINE);
   text(ballFreq, windowWidth * 0.75 + 20, windowHeight - 54 + txtSize);
 }
